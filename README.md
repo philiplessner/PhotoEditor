@@ -4,7 +4,7 @@ This photo editor is designed to be run under Pythonista 3 (http://omz-software.
 
 ### Features ###
 
-![](./screenshots/after-open.png)
+![](after-open.png)
 
 ### Installation ###
 
