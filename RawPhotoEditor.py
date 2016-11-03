@@ -25,10 +25,11 @@ class RawPhotoEditor(ui.View):
         self._CIVector = ObjCClass('CIVector')
         
         # Views for displaying Image
-        self.sv = ui.ScrollView(frame=(10, 20, 640, 427))
-        self.sv.content_size = (1500, 1000)
+        self._img_sv = ui.ScrollView(frame=(10, 20, 640, 427),
+                           content_size=(1500, 1000))
+        self.add_subview(self._img_sv)
         self.ci_view = DisplayCIImage(frame=(0, 0, 1500, 1000))
-        self.sv.add_subview(self.ci_view)
+        self._img_sv.add_subview(self.ci_view)
         # View for displaing histogram
         self.histogram_view = DisplayHistogram(frame=(200, 525, 300, 150))
         #self.histogram_view.border_width = 1
@@ -71,7 +72,7 @@ class RawPhotoEditor(ui.View):
                                 tint_color=button_tint_color,
                                 action=self.original_image)
         
-        self.add_subview(self.sv)
+        
         self.add_subview(self.histogram_view)
         self.add_subview(enlarge_button)
         self.add_subview(shrink_button)
@@ -104,7 +105,12 @@ class RawPhotoEditor(ui.View):
         colornoise_view = SliderWithValueLabel('Color Noise', {'m': 1.0, 'b': 0.0}, self.raw_colornoise, '{:.2f}', frame=(SLIDER_X, TOP_SLIDER_Y + 5 * SLIDER_Y_SPACING, SLIDER_WIDTH, SLIDER_HEIGHT))
         self.rawfilter_view.add_subview(colornoise_view)
         luminancenoise_view = SliderWithValueLabel('Luminance Noise', {'m': 1.0, 'b': 0.0}, self.raw_luminancenoise, '{:.2f}', frame=(SLIDER_X, TOP_SLIDER_Y + 6 * SLIDER_Y_SPACING, SLIDER_WIDTH, SLIDER_HEIGHT))
-        self.rawfilter_view.add_subview(luminancenoise_view)    
+        self.rawfilter_view.add_subview(luminancenoise_view)
+        sharpness_view = SliderWithValueLabel('Sharpness', {'m': 1.0, 'b': 0.0}, self.raw_sharpness, '{:.2f}', frame=(SLIDER_X, TOP_SLIDER_Y + 7 * SLIDER_Y_SPACING, SLIDER_WIDTH, SLIDER_HEIGHT))
+        self.rawfilter_view.add_subview(sharpness_view)
+        detail_view = SliderWithValueLabel('Details', {'m': 1.0, 'b': 0.0}, self.raw_detail, '{:.2f}', frame=(SLIDER_X, TOP_SLIDER_Y + 8 * SLIDER_Y_SPACING, SLIDER_WIDTH, SLIDER_HEIGHT))
+        self.rawfilter_view.add_subview(detail_view) 
+        
         
     def display_adjustfilters(self):
         SLIDER_X = 10
@@ -181,7 +187,17 @@ class RawPhotoEditor(ui.View):
     @ui.in_background
     def raw_luminancenoise(self, sender):
         self._state_history.append(assoc_in(self._state_history[-1], ['rawfilter', 'inputLuminanceNoiseReductionAmount'], sender.value))
-        self.update_image() 
+        self.update_image()
+        
+    @ui.in_background
+    def raw_sharpness(self, sender):
+        self._state_history.append(assoc_in(self._state_history[-1], ['rawfilter', 'inputNoiseReductionSharpnessAmount'], sender.value))
+        self.update_image()
+        
+    @ui.in_background
+    def raw_detail(self, sender):
+        self._state_history.append(assoc_in(self._state_history[-1], ['rawfilter', 'inputNoiseReductionDetailAmount'], sender.value))
+        self.update_image()     
         
     @ui.in_background
     def adjust_exposure(self, sender):
@@ -250,7 +266,7 @@ class RawPhotoEditor(ui.View):
             return
                   
         rawfilter = {'rawfilter': {'inputEV': self._rawfilter.valueForKey_('inputEV'), 'inputBoostShadowAmount': self._rawfilter.valueForKey_('inputBoostShadowAmount'), 'inputNeutralTemperature': self._rawfilter.valueForKey_('inputNeutralTemperature'), 'inputNeutralTint': self._rawfilter.valueForKey_('inputNeutralTint'),
-        'inputColorNoiseReductionAmount': self._rawfilter.valueForKey_('inputColorNoiseReductionAmount'), 'inputLuminanceNoiseReductionAmount': self._rawfilter.valueForKey_('inputLuminanceNoiseReductionAmount'), 'inputLinearSpaceFilter': self._CIHighlightShadowAdjust_raw}}
+        'inputColorNoiseReductionAmount': self._rawfilter.valueForKey_('inputColorNoiseReductionAmount'), 'inputLuminanceNoiseReductionAmount': self._rawfilter.valueForKey_('inputLuminanceNoiseReductionAmount'), 'inputNoiseReductionSharpnessAmount': self._rawfilter.valueForKey_('inputNoiseReductionSharpnessAmount'), 'inputNoiseReductionDetailAmount': self._rawfilter.valueForKey_('inputNoiseReductionDetailAmount'), 'inputLinearSpaceFilter': self._CIHighlightShadowAdjust_raw}}
         
         self._CIHighlightShadowAdjust_raw.setDefaults()
         self.CIHighlightShadowAdjust.setDefaults()
@@ -273,7 +289,9 @@ class RawPhotoEditor(ui.View):
         self.rawfilter_view['Tint'].initialize(get_in(['rawfilter', 'inputNeutralTint'], self._initial_state).floatValue())
         self.rawfilter_view['Exposure'].initialize(get_in(['rawfilter', 'inputEV'], self._initial_state).floatValue())
         self.rawfilter_view['Color Noise'].initialize(get_in(['rawfilter', 'inputColorNoiseReductionAmount'], self._initial_state).floatValue())
-        self.rawfilter_view['Luminance Noise'].initialize(get_in(['rawfilter', 'inputLuminanceNoiseReductionAmount'], self._initial_state).floatValue())    
+        self.rawfilter_view['Luminance Noise'].initialize(get_in(['rawfilter', 'inputLuminanceNoiseReductionAmount'], self._initial_state).floatValue())
+        self.rawfilter_view['Sharpness'].initialize(get_in(['rawfilter', 'inputNoiseReductionSharpnessAmount'], self._initial_state).floatValue())
+        self.rawfilter_view['Details'].initialize(get_in(['rawfilter', 'inputNoiseReductionDetailAmount'], self._initial_state).floatValue())  
         self.rawfilter_view['Highlights'].initialize(1.0)
         self.rawfilter_view['Shadows'].initialize(0.0)
         
@@ -293,7 +311,8 @@ class RawPhotoEditor(ui.View):
         self.ci_view.height = self.ci_view.ci_img.extent().size.height
         self.ci_view.x = 0.0
         self.ci_view.y = 0.0
-        self.sv.content_size = (self.ci_view.ci_img.extent().size.width, self.ci_view.ci_img.extent().size.height)
+        self._img_sv.content_size = (self.ci_view.ci_img.extent().size.width, self.ci_view.ci_img.extent().size.height)
+        self._img_sv.content_offset = (0, 0)
         self.ci_view.rect = CGRect((0.0, 0.0), (640, 427))
         self.ci_view.set_needs_display()
         
@@ -335,7 +354,7 @@ class RawPhotoEditor(ui.View):
         
     def fit_image(self, sender):
         self.ci_view.rect = CGRect((0.0, 0.0), (640, 427))
-        self.sv.content_offset = (0, 0)
+        self._img_sv.content_offset = (0, 0)
         self.ci_view.set_needs_display()
         
     def original_image(self, sender):
