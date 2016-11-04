@@ -43,11 +43,29 @@ class DisplayHistogram(ui.View):
         self.ci_img = ci_img
         
     def draw(self):
-        histogram_img = CIImage2CIHistogram(self.ci_img, 
-                                            self._CIAreaHistogram,
-                                            self._CIHistogramDisplayFilter)
+        histogram_img = self.CIImage2CIHistogram()
         ui_img = CI2UIImage(histogram_img, self._ctx) 
         ui_img.drawInRect_(CGRect((0.0, 0.0), (256, 100)))
+        
+    def CIImage2CIHistogram(self):
+        CIVector = ObjCClass('CIVector')
+        c.CGAffineTransformMakeScale.argtypes = [c_double, c_double]
+        c.CGAffineTransformMakeScale.restype = CGAffineTransform
+        transform = c.CGAffineTransformMakeScale(c_double(0.1), c_double(0.1))
+        scaled_img = self.ci_img.imageByApplyingTransform_(transform)
+        self._CIAreaHistogram.setDefaults()
+        self._CIAreaHistogram.setValue_forKey_(scaled_img, 'inputImage')
+        self._CIAreaHistogram.setValue_forKey_(256, 'inputCount')
+        vec = CIVector.vectorWithCGRect_(scaled_img.extent())
+        self._CIAreaHistogram.setValue_forKey_(vec, 'inputExtent')
+        self._CIAreaHistogram.setValue_forKey_(25.0, 'inputScale')
+        area_img = self._CIAreaHistogram.valueForKey_('outputImage')
+        self._CIHistogramDisplayFilter.setDefaults()
+        self._CIHistogramDisplayFilter.setValue_forKey_(100.0, 'inputHeight')
+        self._CIHistogramDisplayFilter.setValue_forKey_(1.0, 'inputHighLimit')
+        self._CIHistogramDisplayFilter.setValue_forKey_(area_img, 'inputImage')
+        histogram_img = self._CIHistogramDisplayFilter.valueForKey_('outputImage')
+        return histogram_img
         
 
 class FiltersView(ui.View):
@@ -114,24 +132,3 @@ def CI2UIImage(ci_img, ctx):
     c.CGImageRelease.restype = None
     c.CGImageRelease(cg_img)
     return ui_img
-
-    
-def CIImage2CIHistogram(ci_img, CIAreaHistogram, CIHistogramDisplayFilter):
-    CIVector = ObjCClass('CIVector')
-    c.CGAffineTransformMakeScale.argtypes = [c_double, c_double]
-    c.CGAffineTransformMakeScale.restype = CGAffineTransform
-    transform = c.CGAffineTransformMakeScale(c_double(0.1), c_double(0.1))
-    scaled_img = ci_img.imageByApplyingTransform_(transform)
-    CIAreaHistogram.setDefaults()
-    CIAreaHistogram.setValue_forKey_(scaled_img, 'inputImage')
-    CIAreaHistogram.setValue_forKey_(256, 'inputCount')
-    vec = CIVector.vectorWithCGRect_(scaled_img.extent())
-    CIAreaHistogram.setValue_forKey_(vec, 'inputExtent')
-    CIAreaHistogram.setValue_forKey_(25.0, 'inputScale')
-    area_img = CIAreaHistogram.valueForKey_('outputImage')
-    CIHistogramDisplayFilter.setDefaults()
-    CIHistogramDisplayFilter.setValue_forKey_(100.0, 'inputHeight')
-    CIHistogramDisplayFilter.setValue_forKey_(1.0, 'inputHighLimit')
-    CIHistogramDisplayFilter.setValue_forKey_(area_img, 'inputImage')
-    histogram_img = CIHistogramDisplayFilter.valueForKey_('outputImage')
-    return histogram_img
