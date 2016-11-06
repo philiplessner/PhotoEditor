@@ -123,6 +123,68 @@ class SliderWithValueLabel(ui.View):
         self._slider_valuelabel.text = self._valuefmt.format(self.value)
         if self.changed and callable(self.changed):
             self.changed(self)
+            
+class SaveDialog(ui.View):
+    def __init__(self, initial_width, initial_height, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._initial_width = initial_width
+        self._initial_height = initial_height
+        self.frame = (10, 100, 275, 250)
+        self.background_color = 'white'
+        self.img_width = ui.TextField(frame=(10, 30, 100, 25),
+                                      keyboard_type=ui.KEYBOARD_DECIMAL_PAD,
+                                      text=str(initial_width),
+                                      action=self.update_height)
+        self.add_subview(self.img_width)
+        width_label = ui.Label(frame=(10, 5, 150, 25), text='Image Width')
+        self.add_subview(width_label)
+        self.img_height = ui.TextField(frame=(150, 30, 100, 25),
+                                       keyboard_type=ui.KEYBOARD_DECIMAL_PAD,
+                                       text=str(initial_height),
+                                       action=self.update_width)
+        self.add_subview(self.img_height)
+        height_label = ui.Label(frame=(150, 5, 150, 25), text='Image Height')
+        self.add_subview(height_label)
+        aspect_ratio = self._initial_width / self._initial_height
+        self.aspect = ui.TextField(frame=(70, 100, 150, 25),
+                                   text=str(aspect_ratio),
+                                   keyboard_type=ui.KEYBOARD_DECIMAL_PAD,
+                                   alignment=ui.ALIGN_CENTER,
+                                   action=self.updatefrom_aspectratio)
+        self.add_subview(self.aspect)
+        aspect_label = ui.Label(frame=(70, 75, 150, 25), 
+                                text='Aspect',
+                                alignment=ui.ALIGN_CENTER)
+        self.add_subview(aspect_label)
+        self.save_button = ui.Button(frame=(175, 150, 50, 25), 
+                                     title='Save',
+                                     action=self.save)
+        self.add_subview(self.save_button)
+        self.cancel_button = ui.Button(frame=(30, 150, 50, 25), 
+                                     title='Cancel',
+                                     action=self.cancel)
+        self.add_subview(self.cancel_button)
+
+    def update_height(self, sender):
+        self.img_height.text = '{:.0f}'.format(float(sender.text) /
+                                   float(self.aspect.text))
+    def update_width(self, sender):
+        self.img_width.text = '{:.0f}'.format(float(sender.text) *
+                                   float(self.aspect.text))
+                                   
+    def updatefrom_aspectratio(self, sender):
+        self.img_height.text = '{:.0f}'.format(float(self.img_width.text) /
+                                   float(sender.text))
+                      
+    def save(self, sender):
+         self.scale = float(self.img_width.text) / self._initial_width
+         self.aspect_ratio = float(self.aspect.text)
+         self.close()
+         
+    def cancel(self, sender):
+         pass
+        
+        
 
 
 def CI2UIImage(ci_img, ctx):
