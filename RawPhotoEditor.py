@@ -3,7 +3,7 @@ import ui
 import console
 from objc_util import *
 from toolz import assoc_in, get_in, merge
-from customviews import DisplayCIImage, DisplayHistogram, FiltersView, SliderWithValueLabel
+from customviews import DisplayCIImage, DisplayHistogram, FiltersView, SliderWithValueLabel, SaveDialog
 
 
 class RawPhotoEditor(ui.View):
@@ -31,7 +31,7 @@ class RawPhotoEditor(ui.View):
         self.ci_view = DisplayCIImage(frame=(0, 0, 1500, 1000))
         self._img_sv.add_subview(self.ci_view)
         # View for displaing histogram
-        self.histogram_view = DisplayHistogram(frame=(200, 525, 300, 150))
+        self.histogram_view = DisplayHistogram(frame=(10, 575, 300, 150))
         #self.histogram_view.border_width = 1
         self.histogram_view.border_color = 'black'
         
@@ -309,6 +309,7 @@ class RawPhotoEditor(ui.View):
         self.ci_view.ci_img = ci_img
         self.ci_view.width = self.ci_view.ci_img.extent().size.width
         self.ci_view.height = self.ci_view.ci_img.extent().size.height
+        self._sd = SaveDialog(self.ci_view.width, self.ci_view.height)
         self.ci_view.x = 0.0
         self.ci_view.y = 0.0
         self._img_sv.content_size = (self.ci_view.ci_img.extent().size.width, self.ci_view.ci_img.extent().size.height)
@@ -316,8 +317,8 @@ class RawPhotoEditor(ui.View):
         self.ci_view.rect = CGRect((0.0, 0.0), (640, 427))
         self.ci_view.set_needs_display()
         
-        self.histogram_view.ci_img = ci_img
-        self.histogram_view.set_needs_display()
+        #self.histogram_view.ci_img = ci_img
+        #self.histogram_view.set_needs_display()
         
     def update_image(self):
         self._rawfilter = update_rawfilter(self._rawfilter, self._state_history[-1]['rawfilter'])
@@ -331,7 +332,21 @@ class RawPhotoEditor(ui.View):
         #self.histogram_view.ci_img = ci_img
         #self.histogram_view.set_needs_display()
         
+    @ui.in_background
     def save_image(self, sender):
+        self._sd.present('sheet')
+        self._sd.wait_modal()
+        CILanczosScaleTransform = ObjCClass('CIFilter').filterWithName_('CILanczosScaleTransform')
+        CILanczosScaleTransform.setDefaults()
+        CILanczosScaleTransform.setValue_forKey_(self._sd.scale, 'inputScale')
+        #CILanczosScaleTransform.setValue_forKey_(self._sd.aspect_ratio, 'inputAspectRatio')
+        CILanczosScaleTransform.setValue_forKey_(self.ci_view.ci_img, 'inputImage')
+        scaled_ciimg = CILanczosScaleTransform.valueForKey_('outputImage')
+        self.ci_view.ci_img = scaled_ciimg
+        self.ci_view.width = self.ci_view.ci_img.extent().size.width
+        self.ci_view.height = self.ci_view.ci_img.extent().size.height
+        self.ci_view.rect = CGRect((0.0, 0.0), (self.ci_view.width, self.ci_view.height))
+        self.ci_view.set_needs_display()
         c.UIImageWriteToSavedPhotosAlbum.argtypes =[c_void_p, c_void_p, c_void_p, c_void_p]
         c.UIImageWriteToSavedPhotosAlbum.restype = None
         c.UIImageWriteToSavedPhotosAlbum(self.ci_view.ui_img, None, None, None) 
@@ -354,7 +369,7 @@ class RawPhotoEditor(ui.View):
         
     def fit_image(self, sender):
         self.ci_view.rect = CGRect((0.0, 0.0), (640, 427))
-        self._img_sv.content_offset = (0, 0)
+        self._img_sv.content_offset  = (0, 0)
         self.ci_view.set_needs_display()
         
     def original_image(self, sender):
